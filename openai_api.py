@@ -25,7 +25,6 @@ def chat_completion(messages: list[dict[str, str]]) -> str:
         tool_choice="auto"
     )
     response_message = response.choices[0].message
-    print(response_message)
     tool_calls = response_message.tool_calls
     if tool_calls:
         messages.append(response_message)

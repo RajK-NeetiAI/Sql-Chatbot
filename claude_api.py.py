@@ -81,7 +81,6 @@ def chat_completion(messages: list[dict[str, str]]) -> str:
                 ]
             }
         )
-        print(messages)
         second_response = client.beta.tools.messages.create(
             model="claude-3-haiku-20240307",
             max_tokens=1024,
