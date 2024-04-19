@@ -12,6 +12,7 @@ MYSQL_PORT = os.getenv('MYSQL_PORT')
 MYSQL_DB_NAME = os.getenv('MYSQL_DB_NAME')
 GPT_MODEL = os.getenv('GPT_MODEL')
 CLOUDE_API_KEY = os.getenv('CLOUDE_API_KEY')
+AZURE_ENDPOINT = os.getenv('AZURE_ENDPOINT')
 
 cwd = os.getcwd()
 

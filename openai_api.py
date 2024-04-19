@@ -1,14 +1,16 @@
 import json
 
-from openai import OpenAI
+from openai import AzureOpenAI
 
 import config
 from tools import *
 from tool_functions import *
 from database_functions import *
 
-client = OpenAI(
-    api_key=config.OPENAI_API_KEY
+client = AzureOpenAI(
+    api_key=config.OPENAI_API_KEY,
+    azure_endpoint=config.AZURE_ENDPOINT,
+    api_version="2024-02-01"
 )
 
 tools = get_sql_tool(
