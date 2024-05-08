@@ -1,118 +1,92 @@
-import decimal
-import json
+from psycopg2.extras import RealDictCursor
 import datetime
+import decimal
 import os
+import json
 
-from mysql.connector.pooling import MySQLConnectionPool, PooledMySQLConnection
-from mysql.connector import Error
+import psycopg2
+import psycopg2.extras
+import psycopg2.pool
 
 import config
 
 
-def connect_to_mysql_pool() -> MySQLConnectionPool | None:
-    '''Create a MySQL connection pool
-    '''
-    try:
-        connection_pool = MySQLConnectionPool(
-            pool_name="my_pool",
-            pool_size=5,
-            pool_reset_session=True,
-            host=config.MYSQL_HOST,
-            database=config.MYSQL_DB_NAME,
-            user=config.MYSQL_USER,
-            password=config.MYSQL_PASSWORD
-        )
-        return connection_pool
-    except Error as e:
-        print(f"Error creating MySQL connection pool: {e}")
-        return None
+# Global pool variable
+global_connection_pool = None
 
 
-def get_mysql_pooled_cnx() -> PooledMySQLConnection | None:
-    '''Get a new MySQL connection from the connection pool
+def connect_to_postgresql_pool() -> psycopg2.pool.SimpleConnectionPool | None:
+    '''Create or retrieve a PostgreSQL connection pool as a singleton.'''
+    global global_connection_pool
+    if global_connection_pool is None:
+        try:
+            global_connection_pool = psycopg2.pool.SimpleConnectionPool(
+                minconn=1,
+                maxconn=5,
+                host=config.POSTGRES_HOST,
+                database=config.POSTGRES_DB_NAME,
+                user=config.POSTGRES_USER,
+                password=config.POSTGRES_PASSWORD
+            )
+        except psycopg2.DatabaseError as e:
+            print(f"Error creating PostgreSQL connection pool: {e}")
+            global_connection_pool = None
+    return global_connection_pool
+
+
+def get_postgresql_pooled_cnx() -> psycopg2.extensions.connection | None:
+    '''Get a new PostgreSQL connection from the connection pool
     '''
-    pool = connect_to_mysql_pool()
+    pool = connect_to_postgresql_pool()
     if not pool:
         return None
-    cnx = pool.get_connection()
-    return cnx
+    try:
+        cnx = pool.getconn()
+        return cnx
+    except psycopg2.DatabaseError as e:
+        print(f"Error getting connection from pool: {e}")
+        return None
 
 
-def close_mysql_pooled_cnx(cnx: PooledMySQLConnection) -> None:
-    '''Close MySQL connection
+def close_postgresql_cnx(cnx: psycopg2.extensions.connection) -> None:
+    '''Release a PostgreSQL connection back to the pool
     '''
-    if cnx:
-        cnx.close()
-        print("MySQL pooled connection closed.")
+    pool = connect_to_postgresql_pool()
+    if pool is not None and cnx is not None:
+        try:
+            pool.putconn(cnx)
+        except psycopg2.DatabaseError as e:
+            print(f"Error putting connection back to pool: {e}")
 
 
-def get_table_names() -> list[str]:
+def get_tables_name() -> list[str]:
     """Return a list of table names."""
-    cnx = get_mysql_pooled_cnx()
+    cnx = get_postgresql_pooled_cnx()
     cursor = cnx.cursor()
     table_names = []
-    cursor.execute(
-        f"SELECT table_name FROM information_schema.tables WHERE table_schema = '{config.MYSQL_DB_NAME}';")
-    for table in cursor:
+    query = """SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE';"""
+    cursor.execute(query)
+    results = cursor.fetchall()
+    for table in results:
         table_names.append(table[0])
     cursor.close()
-    close_mysql_pooled_cnx(cnx)
+    close_postgresql_cnx(cnx)
     return table_names
 
 
-def get_column_names_for_data_definitions(table_name: str) -> list[str]:
+def get_columns_name(table_name: str) -> list[str]:
     """Return a list of column names."""
-    cnx = get_mysql_pooled_cnx()
+    cnx = get_postgresql_pooled_cnx()
     cursor = cnx.cursor()
     column_names = []
-    cursor.execute(
-        f"SELECT `COLUMN_NAME`, `DATA_TYPE` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA`='{config.MYSQL_DB_NAME}' AND `TABLE_NAME`='{table_name}';")
-    for col in cursor:
+    query = f"""SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{table_name}';"""
+    cursor.execute(query)
+    results = cursor.fetchall()
+    for col in results:
         column_names.append(col)
     cursor.close()
-    close_mysql_pooled_cnx(cnx)
+    close_postgresql_cnx(cnx)
     return column_names
-
-
-def get_column_names(table_name: str) -> list[str]:
-    """Return a list of column names."""
-    cnx = get_mysql_pooled_cnx()
-    cursor = cnx.cursor()
-    column_names = []
-    cursor.execute(
-        f"SELECT `COLUMN_NAME` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA`='{config.MYSQL_DB_NAME}' AND `TABLE_NAME`='{table_name}';")
-    for col in cursor:
-        column_names.append(col[0])
-    cursor.close()
-    close_mysql_pooled_cnx(cnx)
-    return column_names
-
-
-def get_database_info() -> dict:
-    """Return a list of dicts containing the table name and columns for each table in the database."""
-    cnx = get_mysql_pooled_cnx()
-    cursor = cnx.cursor()
-    table_dicts = []
-    for table_name in get_table_names():
-        columns_names = get_column_names(table_name)
-        table_dicts.append(
-            {"table_name": table_name, "column_names": columns_names})
-    cursor.close()
-    close_mysql_pooled_cnx(cnx)
-    return table_dicts
-
-
-def get_database_schema_string() -> str:
-    '''Get database schema as a string
-    '''
-    database_schema_dict = get_database_info()
-    database_schema_string = "\n".join(
-        [
-            f"Table: {table['table_name']}\nColumns: {', '.join(table['column_names'])}"
-            for table in database_schema_dict
-        ]
-    )
-    return database_schema_string
 
 
 def get_database_definitions() -> dict:
@@ -127,50 +101,62 @@ def get_database_definitions() -> dict:
     return database_definitions
 
 
-def format_number(amount) -> str:
-    '''Formate a number in more human readable form
+def get_database_info() -> dict:
+    """Return a list of dicts containing the table name and columns for each table in the database."""
+    table_dicts = []
+    for table_name in get_tables_name():
+        columns_name = get_columns_name(table_name)
+        table_dicts.append(
+            {"table_name": table_name, "columns_name": columns_name})
+    return table_dicts
+
+
+def get_database_schema_string() -> str:
+    '''Get database schema as a string
     '''
-    def truncate_float(number, places):
-        return int(number * (10 ** places)) / 10 ** places
-    if amount < 1e3:
-        return amount
-    if 1e3 <= amount < 1e5:
-        return str(truncate_float((amount / 1e5) * 100, 2)) + " K"
-    if 1e5 <= amount < 1e7:
-        return str(truncate_float((amount / 1e7) * 100, 2)) + " L"
-    if amount > 1e7:
-        return str(truncate_float(amount / 1e7, 2)) + " Cr"
+    database_schema_dict = get_database_info()
+    database_schema_string = "\n".join(
+        [
+            f"Table: {table['table_name']}\nColumns: {table['columns_name']}"
+            for table in database_schema_dict
+        ]
+    )
+    return database_schema_string
 
 
 def serialize_data(obj) -> str:
-    '''Serialize the data to get rid of the serialization error
-    '''
-    if isinstance(obj, datetime.datetime):
+    print(f'Object type -> {type(obj)}')
+    if isinstance(obj, datetime.date):
         return obj.isoformat()
     if isinstance(obj, decimal.Decimal):
-        return format_number(float(obj))
+        return float(obj)
     raise TypeError(f"Object type not serializable - {type(obj)}")
 
 
-def ask_database(query: str) -> str:
+def execute_database_query(query: str) -> list[dict[str, str]] | list:
     """Function to query SQLite database with a provided SQL query."""
-    cnx = get_mysql_pooled_cnx()
+    cnx = get_postgresql_pooled_cnx()
+    response = ''
+    if cnx == None:
+        return response
     try:
-        cursor = cnx.cursor(dictionary=True)
+        cursor = cnx.cursor(cursor_factory=RealDictCursor)
         cursor.execute(query)
-        results = ''
-        for data in cursor:
-            results += json.dumps(data, default=serialize_data)
-    except Exception as e:
-        print(e.args[0])
-        results = ''
+        results = cursor.fetchall()
+        for data in results:
+            response += json.dumps(data, default=serialize_data)
+    except psycopg2.DatabaseError as e:
+        print(f'Error at ask_database -> {e}')
     finally:
-        close_mysql_pooled_cnx(cnx)
-    return results
+        close_postgresql_cnx(cnx)
+    return response
 
 
-def execute_function_call(query: str) -> str:
-    '''Execute ask_database call
+def run_execute_database_query(query: str) -> list[dict[str, str]] | list:
+    '''Execute a query and return the results
     '''
-    results = ask_database(query)
-    return results
+    try:
+        return execute_database_query(query)
+    except psycopg2.DatabaseError as e:
+        print(f"Error executing query: {e}")
+        return []

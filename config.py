@@ -5,14 +5,11 @@ from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv())
 
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-MYSQL_USER = os.getenv('MYSQL_USER')
-MYSQL_PASSWORD = os.getenv('MYSQL_PASSWORD')
-MYSQL_HOST = os.getenv('MYSQL_HOST')
-MYSQL_PORT = os.getenv('MYSQL_PORT')
-MYSQL_DB_NAME = os.getenv('MYSQL_DB_NAME')
 GPT_MODEL = os.getenv('GPT_MODEL')
-CLOUDE_API_KEY = os.getenv('CLOUDE_API_KEY')
-AZURE_ENDPOINT = os.getenv('AZURE_ENDPOINT')
+POSTGRES_HOST = os.getenv('POSTGRES_HOST')
+POSTGRES_DB_NAME = os.getenv('POSTGRES_DB_NAME')
+POSTGRES_USER = os.getenv('POSTGRES_USER')
+POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD')
 
 cwd = os.getcwd()
 

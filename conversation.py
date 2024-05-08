@@ -5,7 +5,7 @@ import config
 def format_chat_history(chat_history: list[list]) -> list[list]:
     formated_chat_history = [
         {"role": "system", "content": "Consider yourself as a helpful data analyst Netcome Learning. \
-You help user get information about the data and answer their question."}
+You help user get information about the data and answer their questions."}
     ]
     for ch in chat_history:
         formated_chat_history.append({
