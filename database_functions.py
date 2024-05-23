@@ -115,12 +115,13 @@ def get_database_schema_string() -> str:
     '''Get database schema as a string
     '''
     database_schema_dict = get_database_info()
-    database_schema_string = "\n".join(
-        [
-            f"Table: {table['table_name']}\nColumns: {table['columns_name']}"
-            for table in database_schema_dict
-        ]
-    )
+    database_schema_string = ""
+    for schema in database_schema_dict:
+        database_schema_string += f'Table information for {schema["table_name"]}\n'
+        for cd in schema['columns_name']:
+            database_schema_string += f'Column name: {cd[0]}, type: {cd[1]}\n'
+        database_schema_string += '\n'
+    database_schema_string = database_schema_string.rstrip('\n')
     return database_schema_string
 
 

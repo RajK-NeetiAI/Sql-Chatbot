@@ -16,16 +16,15 @@ def get_sql_tool(database_schema_string: str, database_definitions: str) -> list
                             "description": f'''Generate a PostgreSQL query to extract information based on a user's question. \
                         
 # Parameters: \
-# - Database Schema: {database_schema_string} \
-# - Data Definitions: {database_definitions} \
-# - Current Date: Use today's date as {datetime.now()} where needed in the query. \
+- Database Schema: {database_schema_string} \
+- Current Date: Use today's date as {datetime.now()} where needed in the query. \
 
 # Instructions: \
-# 1. Construct an SQL query using only the tables and columns listed in the provided schema. \
-# 2. When comparing string use LIKE to maximise the search. \
-# 2. Ensure the query avoids assumptions about non-existent columns. \
-# 3. Consider performance and security best practices, such as avoiding SQL injection risks. \
-# 4. Format the query in plain text for direct execution in a PostgreSQL database. \
+- Construct an SQL query using only the tables and columns listed in the provided schema. \
+- Ensure the query avoids assumptions about non-existent columns. \
+- Consider performance and security best practices, such as avoiding SQL injection risks. \
+- Format the query in plain text for direct execution in a PostgreSQL database. \
+- When you select fields, make sure to reference the table to avoid ambiguity. \
 
 # Example Query: \
 # If the user asks for the number of employees in each department, the query should look like this: \

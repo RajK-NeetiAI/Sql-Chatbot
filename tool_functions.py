@@ -12,7 +12,7 @@ def get_sql_query_response(function_args: dict) -> str:
         if rows == '':
             failed_sql_query_response = """Politely reply that you don't have the answer for the question. \
 # Instructions: \
-# 1. Never use your knowledge to make the answer."""
+# 1. Do not mention any other courses details."""
             return failed_sql_query_response
         else:
             sql_query_response = f"""Explain PostgreSQL data in natural language, \
@@ -34,6 +34,3 @@ def get_sql_query_response(function_args: dict) -> str:
 available_functions = {
     "get_sql_query_response": get_sql_query_response
 }
-
-print(get_sql_query_response(
-    {"query": "SELECT id, title, url FROM chatbotcourses WHERE chatbotvendors_id IN (SELECT id FROM chatbotvendors WHERE title LIKE '%Amazon%') ORDER BY RANDOM() LIMIT 2"}))
