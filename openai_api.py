@@ -15,7 +15,7 @@ tools = get_sql_tool(
 )
 
 
-def chat_completion(messages: list[dict[str, str]]) -> str:
+def chat_completion(query: str, messages: list[dict[str, str]]) -> str:
     response = client.chat.completions.create(
         model=config.GPT_MODEL,
         messages=messages,
@@ -31,12 +31,14 @@ def chat_completion(messages: list[dict[str, str]]) -> str:
             function_to_call = available_functions[function_name]
             function_args = json.loads(tool_call.function.arguments)
             function_response = function_to_call(function_args)
+            insert_new_row(
+                query, function_args['query'], function_response['response'], function_response['status'])
             messages.append(
                 {
                     "tool_call_id": tool_call.id,
                     "role": "tool",
                     "name": function_name,
-                    "content": function_response,
+                    "content": function_response['response'],
                 }
             )
         second_response = client.chat.completions.create(

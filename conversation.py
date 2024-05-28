@@ -27,7 +27,7 @@ def handle_chat_completion(chat_history: list[list]) -> list[list]:
         query = chat_history[-1][0]
         print(f'User query -> {query}')
         formated_chat_history = format_chat_history(chat_history)
-        response = chat_completion(formated_chat_history)
+        response = chat_completion(query, formated_chat_history)
         print(f'Chatbot respons -> {response}')
         chat_history[-1][1] = response
         return chat_history

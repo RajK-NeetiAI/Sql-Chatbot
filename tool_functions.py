@@ -13,7 +13,10 @@ def get_sql_query_response(function_args: dict) -> str:
             failed_sql_query_response = """Politely reply that you don't have the answer for the question. \
 # Instructions: \
 # 1. Do not mention any other courses details."""
-            return failed_sql_query_response
+            return {
+                'status': True,
+                'response': failed_sql_query_response
+            }
         else:
             sql_query_response = f"""Explain PostgreSQL data in natural language, \
             
@@ -25,10 +28,16 @@ def get_sql_query_response(function_args: dict) -> str:
 # 2. If needed consider today's date as {datetime.datetime.now().strftime("%b %d, %Y")}. \
 # 3. If there is a course URL in the SQL data then use "https://www.netcomlearning.com/" to provide it in the answer otherwise don't mention the URL in the awnser. \
 # 4. Never mention that you are reading information from a SQL Database."""
-            return sql_query_response
+            return {
+                'status': True,
+                'response': sql_query_response
+            }
     except Exception as e:
         print(f'Error at get_sql_query_response -> {e}.')
-        return config.ERROR_MESSAGE
+        return {
+            'status': False,
+            'response': config.ERROR_MESSAGE
+        }
 
 
 available_functions = {

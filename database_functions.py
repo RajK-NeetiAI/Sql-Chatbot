@@ -160,4 +160,57 @@ def run_execute_database_query(query: str) -> list[dict[str, str]] | list:
         return execute_database_query(query)
     except psycopg2.DatabaseError as e:
         print(f"Error executing query: {e}")
-        return []
+        return ''
+
+
+def create_new_table(table_name: str) -> bool:
+    """Create a new table with specified columns."""
+    create_table_query = f"""
+    CREATE TABLE IF NOT EXISTS {table_name} (
+        id SERIAL PRIMARY KEY,
+        query TEXT NOT NULL,
+        sql_query TEXT NOT NULL,
+        sql_response TEXT NOT NULL,
+        is_sql_query_ok BOOLEAN NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """
+    cnx = get_postgresql_pooled_cnx()
+    if not cnx:
+        return False
+    try:
+        with cnx.cursor() as cursor:
+            cursor.execute(create_table_query)
+            cnx.commit()
+        return True
+    except psycopg2.DatabaseError as e:
+        print(f"Error creating table {table_name}: {e}")
+        cnx.rollback()
+        return False
+    finally:
+        close_postgresql_cnx(cnx)
+
+
+def insert_new_row(query: str, sql_query: str, sql_response: str, is_sql_query_ok: bool, table_name: str = 'query__response_logger') -> bool:
+    """Insert a new row into the specified table."""
+    insert_query = f"""
+    INSERT INTO {table_name} (query, sql_query, sql_response, is_sql_query_ok)
+    VALUES (%s, %s, %s, %s);
+    """
+    cnx = get_postgresql_pooled_cnx()
+    if not cnx:
+        return False
+    try:
+        with cnx.cursor() as cursor:
+            cursor.execute(insert_query, (query, sql_query,
+                           sql_response, is_sql_query_ok))
+            cnx.commit()
+        return True
+    except psycopg2.DatabaseError as e:
+        print(f"Error inserting row into table {table_name}: {e}")
+        cnx.rollback()
+        return False
+    finally:
+        close_postgresql_cnx(cnx)
+
+create_new_table('query__response_logger')
